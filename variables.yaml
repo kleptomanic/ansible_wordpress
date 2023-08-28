@@ -1,0 +1,7 @@
+---
+
+- wp_version: "6.3"
+- wp_database: "wordpress"
+- wp_database_username: "wordpress"
+- wp_database_password: "wordpress"
+- wp_file_checksum: sha1:47a9857e5e6b5f6cb8415a2b8de952deaf83924a

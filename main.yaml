@@ -1,0 +1,118 @@
+---
+- name: Configuring the web server to run wordpress in the target system
+  become: true
+  hosts: host1
+  
+  vars_files:
+    - variables.yaml 
+
+  pre_tasks:
+   - name: Updating and upgrading the system
+     apt:
+        update_cache: true
+        upgrade: dist
+
+   - name: Installing apache2 web server in the target machine
+     apt:
+       name: apache2
+       state: latest
+  
+   - name: Installing mysql database server
+     apt:
+       name: mysql-server
+       state: latest 
+   - name: INstalling unzip software
+     apt:
+        name: unzip
+        state: latest
+
+   - name: Installing python3 pip software
+     apt:
+        name: python3-pip
+        state: latest
+
+   - name: Installing pymysql via the python3 pip
+     pip:
+        name: pymysql
+        state: latest   
+
+   - name: Installing php modules in the system
+     apt:
+        name:
+          - ghostscript
+          - libapache2-mod-php
+          - php
+          - php-bcmath
+          - php-curl
+          - php-imagick
+          - php-intl
+          - php-json
+          - php-mbstring
+          - php-mysql
+          - php-xml
+          - php-zip 
+        state: latest
+
+  handlers:
+   - name: Restart web server
+     service:
+        name: apache2
+        state: restarted
+        enabled: true
+     listen: "restart web server"
+
+   - name: Restart mysql server
+     service:
+        name: mysql
+        state: restarted
+        enabled: true
+     listen: "restart mysql server"
+
+
+  tasks:
+    - name: Downloading the files of wordpress
+      get_url:
+        url: "https://wordpress.org/wordpress-{{ wp_version }}.zip"
+        dest: "/tmp/wordpress-{{ wp_version }}.zip"
+        checksum: "{{ wp_file_checksum }}"
+        backup: true
+
+    - name: Unzip WP file and copy it into the /var/www/html
+      unarchive:
+         src: "/tmp/wordpress-{{ wp_version }}.zip"
+         dest: /var/www/html/
+         remote_src: yes
+
+    - name: Creating the mysql database named as "WORDPRESS"
+      mysql_db:
+        name: "{{ wp_database }}"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+    - name: Creating the user "wordpress" and providing the privilege
+      mysql_user:
+        name: "{{ wp_database_username }}"
+        password: "{{ wp_database_password }}"
+        priv: "wordpress.*:ALL"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      notify: "restart mysql server"
+
+    - name: Copying the wp-config file into the target system
+      copy:
+        src: files/wp-config.php
+        dest: /var/www/html/wordpress
+      notify: "restart web server"
+
+  post_tasks:
+    - name: restart web services
+      service:
+        name: apache2
+        state: restarted
+        enabled: true
+    - name: restart database
+      service:
+        name: mysql
+        state: restarted
+        enabled: true
+       
